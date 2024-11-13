@@ -6,28 +6,54 @@
     <title>Cashflow</title>
 </head>
 <body>
-    <div id="container"></div>
+    <h2>取引入力フォーム</h2>
 
-    <button onclick="addRow()">Add</button>
-  
-  <table id="dataTable">
-    <thead>
-      <tr>
-        <th>日付</th>
-        <th>項目</th>
-        <th>収支</th>
-        <th>合計</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><input type="date"></td>
-        <td><input type="text"></td>
-        <td><input type="number"></td>
-        <td>0</td>
-      </tr>
-    </tbody>
-  </table>
+    <!-- 入力フォーム -->
+    <div class="form-container">
+        <label for="inputDate">日付:</label>
+        <input type="date" id="inputDate">
+
+        <label for="inputTransactionName">取引名:</label>
+        <input type="text" id="inputTransactionName">
+
+        <label for="inputTransactionType">取引タイプ:</label>
+        <select id="inputTransactionType">
+            <option value="Checking">Checking</option>
+            <option value="Saving >> Checking">Saving >> Checking</option>
+            <option value="Saving >> Securities">Saving >> Securities</option>
+            <option value="Checking >> Saving">Checking >> Saving</option>
+            <option value="Checking >> Securities">Checking >> Securities</option>
+            <option value="Securities >> Saving">Securities >> Saving</option>
+            <option value="Securities >> Checking">Securities >> Checking</option>
+        </select>
+
+        <label for="inputAmount">金額:</label>
+        <input type="number" id="inputAmount" value="0">
+
+        <button id="addRowBtn">追加</button>
+    </div>
+
+    <h2>取引履歴</h2>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>日付</th>
+                <th>取引名</th>
+                <th>取引タイプ</th>
+                <th>金額</th>
+                <th>Checking</th>
+                <th>Saving</th>
+                <th>Securities</th>
+                <th>Cur. Asset</th>
+                <th>更新</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 行はここに追加される -->
+        </tbody>
+    </table>
+
+    
 
     <script src="./js/cashflow.js"></script>
 </body>

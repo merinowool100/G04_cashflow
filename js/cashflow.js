@@ -1,266 +1,132 @@
-// function createTable() {
-//     const table = document.createElement("table");
-//     table.style.border = "1px solid black";
-//     table.style.borderCollapse = "collapse";
-//     table.style.width = "500px";
-//     table.style.tableLayout = "fixed";
+document.addEventListener('DOMContentLoaded', function() {
+    let table = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+    let checkingTotal = 0;  // checkingの合計を保持する変数
 
-//     const headerRow = document.createElement("tr");
+    // 入力ボタンが押されたときに行を追加する処理
+    document.getElementById('addRowBtn').addEventListener('click', function() {
+        let date = document.getElementById('inputDate').value;
+        let transactionName = document.getElementById('inputTransactionName').value;
+        let transactionType = document.getElementById('inputTransactionType').value;
+        let amount = parseFloat(document.getElementById('inputAmount').value) || 0;
 
-//     const header1 =  document.createElement("td");
-//     header1.textContent = "Year";
-//     header1.style.width = "50px";
-//     header1.style.border = "1px solid black";
-//     headerRow.appendChild(header1);
+        if (!date || !transactionName || amount <= 0) {
+            alert('すべてのフィールドを正しく入力してください');
+            return;
+        }
 
-//     const header2 =  document.createElement("td");
-//     header2.textContent = "Month";
-//     header2.style.width = "50px";
-//     header2.style.border = "1px solid black";
-//     headerRow.appendChild(header2);
+        // 1. Tableに新しい行を追加
+        let newRow = table.insertRow();
+        newRow.innerHTML = `
+            <td>${date}</td>
+            <td>${transactionName}</td>
+            <td>${transactionType}</td>
+            <td>${amount}</td>
+            <td><input type="number" class="checkingAmount" disabled></td>
+            <td><input type="number" class="savingAmount" disabled></td>
+            <td><input type="number" class="securitiesAmount" disabled></td>
+            <td><input type="number" class="curAssetAmount" disabled></td>
+            <td><button class="updateBtn">更新</button></td>
+        `;
 
-//     const header3 =  document.createElement("td");
-//     header3.textContent = "Day";
-//     header3.style.width = "50px";
-//     header3.style.border = "1px solid black";
-//     headerRow.appendChild(header3);
+        // 2. 行に更新ボタンのイベントリスナーを追加
+        newRow.querySelector('.updateBtn').addEventListener('click', function() {
+            updateRow(newRow);
+        });
 
-//     const header4 =  document.createElement("td");
-//     header4.textContent = "Item";
-//     header4.style.width = "150px";
-//     header4.style.border = "1px solid black";
-//     headerRow.appendChild(header4);
+        // 3. 入力後、テーブルの計算と並べ替えを実行
+        updateTable();
 
-//     const header5 =  document.createElement("td");
-//     header5.textContent = "Type";
-//     header5.style.width = "100px";
-//     header5.style.border = "1px solid black";
-//     headerRow.appendChild(header5);
+        // 4. 入力フォームをリセット
+        document.getElementById('inputDate').value = '';
+        document.getElementById('inputTransactionName').value = '';
+        document.getElementById('inputTransactionType').value = 'Checking';
+        document.getElementById('inputAmount').value = '';
+    });
 
-//     const header6 =  document.createElement("td");
-//     header6.textContent = "Amount";
-//     header6.style.width = "100px";
-//     header6.style.border = "1px solid black";
-//     headerRow.appendChild(header6);
+    // テーブルを更新し、並べ替え、再計算する関数
+    function updateTable() {
+        let rows = Array.from(table.rows);
+        checkingTotal = 0;  // checkingTotalをリセット
 
-//     const header7 =  document.createElement("td");
-//     header7.textContent = "Checking";
-//     header7.style.width = "100px";
-//     header7.style.border = "1px solid black";
-//     headerRow.appendChild(header7);
+        // 5. すべての行について計算
+        rows.forEach((row, index) => {
+            let amount = parseFloat(row.cells[3].textContent) || 0;
+            let transactionType = row.cells[2].textContent;
+            let checkingCell = row.cells[4].querySelector('input');
+            let savingCell = row.cells[5].querySelector('input');
+            let securitiesCell = row.cells[6].querySelector('input');
+            let curAssetCell = row.cells[7].querySelector('input');
 
-//     const header8 =  document.createElement("td");
-//     header8.textContent = "Saving";
-//     header8.style.width = "100px";
-//     header8.style.border = "1px solid black";
-//     headerRow.appendChild(header8);
+            // 初期の金額を設定
+            let checkingAmount = checkingTotal;
+            let savingAmount = 1000;  // 仮の初期値
+            let securitiesAmount = 1000;  // 仮の初期値
 
-//     const header9 =  document.createElement("td");
-//     header9.textContent = "Securities";
-//     header9.style.width = "100px";
-//     header9.style.border = "1px solid black";
-//     headerRow.appendChild(header9);
+            // トランザクションタイプに応じて金額を更新
+            if (transactionType === "Saving >> Checking") {
+                checkingAmount += amount;
+                savingAmount -= amount;
+            } else if (transactionType === "Saving >> Securities") {
+                savingAmount -= amount;
+                securitiesAmount += amount;
+            } else if (transactionType === "Checking >> Saving") {
+                checkingAmount -= amount;
+                savingAmount += amount;
+            } else if (transactionType === "Checking >> Securities") {
+                checkingAmount -= amount;
+                securitiesAmount += amount;
+            } else if (transactionType === "Securities >> Saving") {
+                securitiesAmount -= amount;
+                savingAmount += amount;
+            } else if (transactionType === "Securities >> Checking") {
+                securitiesAmount -= amount;
+                checkingAmount += amount;
+            } else if (transactionType === "Checking") {
+                checkingAmount += amount;
+            }
 
-//     const header10 =  document.createElement("td");
-//     header10.textContent = "Curt. Asset";
-//     header10.style.width = "100px";
-//     header10.style.border = "1px solid black";
-//     headerRow.appendChild(header10);
+            // セルに計算結果を表示
+            checkingCell.value = checkingAmount;
+            savingCell.value = savingAmount;
+            securitiesCell.value = securitiesAmount;
 
-//     table.appendChild(headerRow);
+            // 合計金額を表示
+            let curAsset = checkingAmount + savingAmount + securitiesAmount;
+            curAssetCell.value = curAsset;
 
-//     for (let i = 0; i < 10; i++) {
-//         const row = document.createElement("tr");
-//         for (let j = 0; j < 10; j++) {
-//             const cell = document.createElement("td");
-//             cell.style.border = "1px solid black";
-//             // cell.style.width = "100px";
-//             cell.style.height = "20px";
-//             cell.style.padding = "10px";
-//             row.appendChild(cell);
-//         }
-//         table.appendChild(row);
-//     }
-//     document.body.appendChild(table);
+            // checkingTotalを次の行に引き継ぐ
+            checkingTotal = checkingAmount;
+        });
 
-//     const totalRow = document.createElement("tr");
+        // 6. テーブルを日付順に並べ替え
+        rows.sort((rowA, rowB) => {
+            let dateA = new Date(rowA.cells[0].textContent);
+            let dateB = new Date(rowB.cells[0].textContent);
+            return dateA - dateB; // 昇順に並べる
+        });
 
-//     const total1 =  document.createElement("td");
-//     total1.textContent = "Total";
-//     total1.style.width = "300px";
-//     total1.style.border = "1px solid black";
-//     totalRow.appendChild(total1);
+        // 並べ替えた行をテーブルに再配置
+        rows.forEach(row => table.appendChild(row));
+    }
 
-//     const total2 =  document.createElement("td");
-//     total2.textContent = 0;
-//     total2.style.width = "50px";
-//     total2.style.border = "1px solid black";
-//     totalRow.appendChild(total2);
+    // 行を更新する処理
+    function updateRow(row) {
+        let date = prompt('新しい日付:', row.cells[0].textContent);
+        let transactionName = prompt('新しい取引名:', row.cells[1].textContent);
+        let transactionType = prompt('新しい取引タイプ:', row.cells[2].textContent);
+        let amount = parseFloat(prompt('新しい金額:', row.cells[3].textContent));
 
-//     const total3 =  document.createElement("td");
-//     total3.textContent = 0;
-//     total3.style.width = "50px";
-//     total3.style.border = "1px solid black";
-//     totalRow.appendChild(total3);
+        if (!date || !transactionName || !transactionType || isNaN(amount)) {
+            alert('すべてのフィールドを正しく入力してください');
+            return;
+        }
 
-//     const total4 =  document.createElement("td");
-//     total4.textContent = 0;
-//     total4.style.width = "150px";
-//     total4.style.border = "1px solid black";
-//     totalRow.appendChild(total4);
+        row.cells[0].textContent = date;
+        row.cells[1].textContent = transactionName;
+        row.cells[2].textContent = transactionType;
+        row.cells[3].textContent = amount;
 
-//     const total5 =  document.createElement("td");
-//     total5.textContent = 0;
-//     total5.style.width = "100px";
-//     total5.style.border = "1px solid black";
-//     totalRow.appendChild(total5);
-
-//     const total6 =  document.createElement("td");
-//     total6.textContent = 0;
-//     total6.style.width = "100px";
-//     total6.style.border = "1px solid black";
-//     totalRow.appendChild(total6);
-
-//     const total7 =  document.createElement("td");
-//     total7.textContent = 0;
-//     total7.style.width = "100px";
-//     total7.style.border = "1px solid black";
-//     totalRow.appendChild(total7);
-
-//     const total8 =  document.createElement("td");
-//     total8.textContent = 0;
-//     total8.style.width = "100px";
-//     total8.style.border = "1px solid black";
-//     totalRow.appendChild(total8);
-
-//     const total9 =  document.createElement("td");
-//     total9.textContent = 0;
-//     total9.style.width = "100px";
-//     total9.style.border = "1px solid black";
-//     totalRow.appendChild(total9);
-
-//     const total10 =  document.createElement("td");
-//     total10.textContent = 0;
-//     total10.style.width = "100px";
-//     total10.style.border = "1px solid black";
-//     totalRow.appendChild(total10);
-
-//     table.appendChild(totalRow);
-
-//     // 新しい行を追加する関数
-//     function addRow(year, month, day, item, type, amount, balance) {
-//         const newRow = document.createElement("tr");
-
-//         const cell1 = document.createElement("td");
-//         cell1.textContent = year;
-//         cell1.style.border = "1px solid black";
-//         newRow.appendChild(cell1);
-
-//         const cell2 = document.createElement("td");
-//         cell2.textContent = month;
-//         cell2.style.border = "1px solid black";
-//         newRow.appendChild(cell2);
-
-//         const cell3 = document.createElement("td");
-//         cell3.textContent = day;
-//         cell3.style.border = "1px solid black";
-//         newRow.appendChild(cell3);
-
-//         const cell4 = document.createElement("td");
-//         cell4.textContent = item;
-//         cell4.style.border = "1px solid black";
-//         newRow.appendChild(cell4);
-
-//         const cell5 = document.createElement("td");
-//         cell5.textContent = type;
-//         cell5.style.border = "1px solid black";
-//         newRow.appendChild(cell5);
-
-//         const cell6 = document.createElement("td");
-//         cell6.textContent = amount;
-//         cell6.style.border = "1px solid black";
-//         newRow.appendChild(cell6);
-
-//         const cell7 = document.createElement("td");
-//         cell7.textContent = amount;
-//         cell7.style.border = "1px solid black";
-//         newRow.appendChild(cell7);
-
-//         const cell8 = document.createElement("td");
-//         cell8.textContent = type;
-//         cell8.style.border = "1px solid black";
-//         newRow.appendChild(cell8);
-
-//         const cell9 = document.createElement("td");
-//         cell9.textContent = amount;
-//         cell9.style.border = "1px solid black";
-//         newRow.appendChild(cell9);
-
-//         const cell10 = document.createElement("td");
-//         cell10.textContent = amount;
-//         cell10.style.border = "1px solid black";
-//         newRow.appendChild(cell10);
-
-//         const firstDataRow = table.rows[1];
-//         const firstRowHeight = firstDataRow.offsetHeight;
-//         newRow.style.height = `${firstRowHeight}px`;
-
-
-
-//         table.insertBefore(newRow, totalRow);  // Total 行の前に新しい行を挿入
-//     }
-
-
-//     const addBtn = document.createElement("button");
-//     addBtn.textContent = "Add";
-//     addBtn.style.marginTop = "20px";
-//     document.body.appendChild(addBtn);
-//     addBtn.addEventListener("click",()=>{
-//         addRow();
-//     });
-
-// }
-
-// createTable();
-
-let table = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
-
-// 行を追加する関数
-function addRow() {
-  let newRow = table.insertRow();
-
-  // 各セルに入力フォームを追加
-  newRow.innerHTML = `
-    <td><input type="date" onchange="updateTable()"></td>
-    <td><input type="text" onchange="updateTable()"></td>
-    <td><input type="number" onchange="updateTable()"></td>
-    <td>0</td>
-  `;
-  updateTable();  // テーブルを更新して並べ替えを行う
-}
-
-// テーブルを更新して並べ替え、合計を計算する関数
-function updateTable() {
-  let rows = Array.from(table.rows);
-  
-  // 行のデータを収集して並べ替え
-  rows.forEach(row => {
-    let date = row.cells[0].querySelector('input').value;
-    let incomeExpense = parseFloat(row.cells[2].querySelector('input').value) || 0;
-    let totalCell = row.cells[3];
-
-    // 合計を計算
-    let previousTotal = rows.indexOf(row) > 0 ? parseFloat(rows[rows.indexOf(row) - 1].cells[3].innerText) : 0;
-    totalCell.innerText = previousTotal + incomeExpense;
-  });
-
-  // 日付順に並べ替え
-  rows.sort((rowA, rowB) => {
-    let dateA = new Date(rowA.cells[0].querySelector('input').value);
-    let dateB = new Date(rowB.cells[0].querySelector('input').value);
-    return dateB - dateA;  // 新しい日付を上にする
-  });
-
-  // 並べ替えた行をテーブルに再配置
-  rows.forEach(row => table.appendChild(row));
-}
+        // 更新後、テーブルを再計算
+        updateTable();
+    }
+});
