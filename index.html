@@ -1,34 +1,281 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cashflow</title>
+    <title>日付順金額管理</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        input, select, button {
+            margin: 5px;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .controls select, .controls button, .controls input {
+            padding: 5px 10px;
+        }
+        .arrows {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .arrow-btn {
+            margin: 0 10px;
+            padding: 5px 10px;
+        }
+        .month-display {
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
-    <div id="container"></div>
 
-    <button onclick="addRow()">Add</button>
-  
-  <table id="dataTable">
-    <thead>
-      <tr>
-        <th>日付</th>
-        <th>項目</th>
-        <th>収支</th>
-        <th>合計</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><input type="date"></td>
-        <td><input type="text"></td>
-        <td><input type="number"></td>
-        <td>0</td>
-      </tr>
-    </tbody>
-  </table>
+    <h1>日付順金額管理</h1>
 
-    <script src="./js/cashflow.js"></script>
+    <!-- 期間選択 -->
+    <div class="controls">
+        <label for="startDate">開始年月: </label>
+        <select id="startDate"></select>
+        <label for="endDate">終了年月: </label>
+        <select id="endDate"></select>
+    </div>
+
+    <!-- 年月選択と矢印ボタン -->
+    <div class="controls arrows">
+        <button id="prevMonth" class="arrow-btn">&lt; 前月</button>
+        <span id="monthDisplay" class="month-display"></span>
+        <button id="nextMonth" class="arrow-btn">次月 &gt;</button>
+    </div>
+
+    <!-- 入力フォーム（表示月の下）-->
+    <div class="controls">
+        <form id="inputForm">
+            <label for="day">日: </label>
+            <input type="number" id="day" name="day" min="1" max="31" required>
+            <label for="item">項目: </label>
+            <input type="text" id="item" name="item" required>
+            <label for="amount">金額: </label>
+            <input type="number" id="amount" name="amount" required>
+            <button type="submit">追加</button>
+        </form>
+    </div>
+
+    <table id="balanceTable">
+        <thead>
+            <tr>
+                <th>日</th>
+                <th>項目</th>
+                <th>金額</th>
+                <th>残高</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>繰越</td>
+                <td>0</td>
+                <td id="initialBalance"><input type="number" id="initialBalanceInput" placeholder="手動入力" /></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        // 初期データ
+        let tableData = [
+            { day: 1, item: "繰越", amount: 0, balance: 10000 }
+        ];
+
+        let startDate = "2024-11";  // 開始年月を2024年11月に固定
+        let endDate, currentDate;
+
+        // 開始年月と終了年月を生成
+        function generateMonthOptions() {
+            const startYear = 2024;
+            const endYear = 2030;
+            const startMonth = 1;
+            const endMonth = 12;
+
+            // 開始年月（2024年11月）から終了年月（2030年10月）までの年月をプルダウンに追加
+            const startSelect = document.getElementById('startDate');
+            const endSelect = document.getElementById('endDate');
+            
+            // 月の範囲を設定
+            let options = '';
+            for (let year = startYear; year <= endYear; year++) {
+                for (let month = 1; month <= 12; month++) {
+                    const monthStr = String(month).padStart(2, '0');
+                    const yearMonth = `${year}-${monthStr}`;
+                    options += `<option value="${yearMonth}">${yearMonth}</option>`;
+                }
+            }
+
+            startSelect.innerHTML = options;
+            endSelect.innerHTML = options;
+        }
+
+        // 月の選択
+        function setDateRange() {
+            currentDate = startDate;  // 開始年月をセット
+
+            // 表示する年月を設定
+            updateMonthDisplay();
+
+            // 月を変更するボタンの状態を更新
+            updateArrowButtons();
+        }
+
+        // 終了年月を開始年月の59か月後に設定
+        function setEndDateBasedOnStartDate() {
+            const startDateObj = new Date(startDate + '-01'); // YYYY-MM-01の形式に変換
+            const endDateObj = new Date(startDateObj);
+            endDateObj.setMonth(startDateObj.getMonth() + 59); // 59か月後
+
+            const year = endDateObj.getFullYear();
+            const month = String(endDateObj.getMonth() + 1).padStart(2, '0');
+            document.getElementById('endDate').value = `${year}-${month}`;
+            endDate = `${year}-${month}`; // 終了年月を更新
+        }
+
+        // 月表示の更新
+        function updateMonthDisplay() {
+            const monthDisplay = document.getElementById('monthDisplay');
+            monthDisplay.textContent = currentDate;
+        }
+
+        // 前月、次月ボタンの表示/非表示を制御
+        function updateArrowButtons() {
+            const prevButton = document.getElementById('prevMonth');
+            const nextButton = document.getElementById('nextMonth');
+
+            // 開始年月の前に戻れないようにする
+            if (currentDate === startDate) {
+                prevButton.style.display = 'none';
+            } else {
+                prevButton.style.display = 'inline-block';
+            }
+
+            // 終了年月の後に進めないようにする
+            if (currentDate === endDate) {
+                nextButton.style.display = 'none';
+            } else {
+                nextButton.style.display = 'inline-block';
+            }
+        }
+
+        // 月を進める（次月）
+        function nextMonth() {
+            const [year, month] = currentDate.split('-').map(Number);
+            let newMonth = month + 1;
+            let newYear = year;
+            if (newMonth > 12) {
+                newMonth = 1;
+                newYear++;
+            }
+            const newDate = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+
+            if (newDate <= endDate) {
+                currentDate = newDate;
+                updateMonthDisplay();
+                updateArrowButtons();
+            }
+        }
+
+        // 月を戻す（前月）
+        function prevMonth() {
+            const [year, month] = currentDate.split('-').map(Number);
+            let newMonth = month - 1;
+            let newYear = year;
+            if (newMonth < 1) {
+                newMonth = 12;
+                newYear--;
+            }
+            const newDate = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+
+            if (newDate >= startDate) {
+                currentDate = newDate;
+                updateMonthDisplay();
+                updateArrowButtons();
+            }
+        }
+
+        // イベントリスナーの設定
+        document.getElementById('startDate').addEventListener('change', function() {
+            setDateRange();
+            setEndDateBasedOnStartDate(); // 終了年月を開始年月の59か月後に設定
+        });
+
+        // 初期化
+        generateMonthOptions();
+
+        // 初期の開始年月と終了年月を設定
+        setDateRange();
+        setEndDateBasedOnStartDate(); // 終了年月を設定
+
+        // ボタンのイベントリスナー
+        document.getElementById('prevMonth').addEventListener('click', prevMonth);
+        document.getElementById('nextMonth').addEventListener('click', nextMonth);
+
+        // 入力フォームの送信イベントを監視
+        document.getElementById('inputForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // フォームからデータを取得
+            const day = parseInt(document.getElementById('day').value);
+            const item = document.getElementById('item').value;
+            const amount = parseInt(document.getElementById('amount').value);
+
+            const newRow = { day, item, amount, balance: 0 };
+
+            // 新しい行を残高計算して追加
+            newRow.balance = tableData[tableData.length - 1].balance + newRow.amount;
+            tableData.push(newRow);
+
+            // 既存データが日付順に並べ替えられるようにソート
+            tableData.sort((a, b) => a.day - b.day);
+
+            // 残高の計算（順番に計算する）
+            for (let i = 1; i < tableData.length; i++) {
+                tableData[i].balance = tableData[i - 1].balance + tableData[i].amount;
+            }
+
+            // テーブルを再描画
+            renderTable();
+
+            // フォームをリセット（手動で値をリセット）
+            document.getElementById('day').value = '';
+            document.getElementById('item').value = '';
+            document.getElementById('amount').value = '';
+        });
+
+        // テーブルの再描画
+        function renderTable() {
+            const tbody = document.querySelector('#balanceTable tbody');
+            tbody.innerHTML = '';
+
+            tableData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.day}</td>
+                    <td>${row.item}</td>
+                    <td>${row.amount}</td>
+                    <td>${row.balance}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+
 </body>
 </html>

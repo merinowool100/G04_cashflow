@@ -223,44 +223,250 @@
 
 // createTable();
 
-let table = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
 
-// 行を追加する関数
-function addRow() {
-  let newRow = table.insertRow();
 
-  // 各セルに入力フォームを追加
-  newRow.innerHTML = `
-    <td><input type="date" onchange="updateTable()"></td>
-    <td><input type="text" onchange="updateTable()"></td>
-    <td><input type="number" onchange="updateTable()"></td>
-    <td>0</td>
-  `;
-  updateTable();  // テーブルを更新して並べ替えを行う
-}
+/////////////////////////////////////////////////////////////////////////////////
+
+
+// let table = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+
+// // 行を追加する関数
+// function addRow() {
+//   let newRow = table.insertRow();
+
+//   // 各セルに入力フォームを追加
+//   newRow.innerHTML = `
+//     <td><input type="date" style="border:none;" onchange="updateTable()"></td>
+//     <td><input type="text" style="border:none;" onchange="updateTable()"></td>
+//     <td><input type="number" style="border:none;" onchange="updateTable()"></td>
+//     <td>0</td>
+//   `;
+//   updateTable();  // テーブルを更新して並べ替えを行う
+// }
 
 // テーブルを更新して並べ替え、合計を計算する関数
-function updateTable() {
-  let rows = Array.from(table.rows);
+// function updateTable() {
+//   let rows = Array.from(table.rows);
   
-  // 行のデータを収集して並べ替え
-  rows.forEach(row => {
-    let date = row.cells[0].querySelector('input').value;
-    let incomeExpense = parseFloat(row.cells[2].querySelector('input').value) || 0;
-    let totalCell = row.cells[3];
+//   // 行のデータを収集して並べ替え
+//   rows.forEach(row => {
+//     let date = row.cells[0].querySelector('input').value;
+//     let incomeExpense = parseFloat(row.cells[2].querySelector('input').value) || 0;
+//     let totalCell = row.cells[3];
 
-    // 合計を計算
-    let previousTotal = rows.indexOf(row) > 0 ? parseFloat(rows[rows.indexOf(row) - 1].cells[3].innerText) : 0;
-    totalCell.innerText = previousTotal + incomeExpense;
-  });
+//     // 合計を計算
+//     let previousTotal = rows.indexOf(row) > 0 ? parseFloat(rows[rows.indexOf(row) - 1].cells[3].innerText) : 0;
+//     totalCell.innerText = previousTotal + incomeExpense;
+//   });
 
-  // 日付順に並べ替え
-  rows.sort((rowA, rowB) => {
-    let dateA = new Date(rowA.cells[0].querySelector('input').value);
-    let dateB = new Date(rowB.cells[0].querySelector('input').value);
-    return dateB - dateA;  // 新しい日付を上にする
-  });
+//   // 日付順に並べ替え
+//   rows.sort((rowA, rowB) => {
+//     let dateA = new Date(rowA.cells[0].querySelector('input').value);
+//     let dateB = new Date(rowB.cells[0].querySelector('input').value);
+//     return dateA - dateB;  // 新しい日付を上にする
+//   });
 
-  // 並べ替えた行をテーブルに再配置
-  rows.forEach(row => table.appendChild(row));
-}
+//   // 並べ替えた行をテーブルに再配置
+//   rows.forEach(row => table.appendChild(row));
+// }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // 初期値設定
+        let checkingBalance = 10000;
+        let savingBalance = 5000;
+        let securitiesBalance = 2000;
+        let curAsset = checkingBalance + savingBalance + securitiesBalance;
+
+        // ページロード時の設定
+        document.addEventListener("DOMContentLoaded", () => {
+            // 初期年月を設定
+            const currentDate = new Date();
+            const currentYearMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+            document.getElementById('year-month').value = currentYearMonth;
+
+            // 初期残高を表示
+            document.getElementById('cur-asset').textContent = curAsset;
+            document.getElementById('initial-checking').textContent = checkingBalance;
+            document.getElementById('initial-saving').textContent = savingBalance;
+            document.getElementById('initial-securities').textContent = securitiesBalance;
+            document.getElementById('initial-cur-asset').textContent = curAsset;
+
+            makeCellsEditable();
+        });
+
+        // 残高の更新
+        function updateBalances() {
+            // 年月選択に基づいて残高を更新
+            checkingBalance = parseFloat(document.getElementById('checking').value) || checkingBalance;
+            savingBalance = parseFloat(document.getElementById('saving').value) || savingBalance;
+            securitiesBalance = parseFloat(document.getElementById('securities').value) || securitiesBalance;
+            curAsset = checkingBalance + savingBalance + securitiesBalance;
+
+            // 更新された残高を表示
+            document.getElementById('cur-asset').textContent = curAsset;
+            document.getElementById('initial-checking').textContent = checkingBalance;
+            document.getElementById('initial-saving').textContent = savingBalance;
+            document.getElementById('initial-securities').textContent = securitiesBalance;
+            document.getElementById('initial-cur-asset').textContent = curAsset;
+
+            // 残高再計算（テーブルに反映）
+            recalculateBalances();
+        }
+
+        // 取引をテーブルに追加
+        document.getElementById('transaction-form').addEventListener("submit", function (e) {
+            e.preventDefault();
+            
+            const date = parseInt(document.getElementById('date').value);
+            const item = document.getElementById('item').value;
+            const type = document.getElementById('type').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            // 取引処理
+            let newChecking = checkingBalance;
+            let newSaving = savingBalance;
+            let newSecurities = securitiesBalance;
+
+            switch (type) {
+                case 'Checking':
+                    newChecking += amount;
+                    break;
+                case 'Saving':
+                    newSaving += amount;
+                    break;
+                case 'Securities':
+                    newSecurities += amount;
+                    break;
+                case 'Checking >> Saving':
+                    newChecking -= amount;
+                    newSaving += amount;
+                    break;
+                case 'Checking >> Securities':
+                    newChecking -= amount;
+                    newSecurities += amount;
+                    break;
+                case 'Saving >> Checking':
+                    newSaving -= amount;
+                    newChecking += amount;
+                    break;
+                case 'Saving >> Securities':
+                    newSaving -= amount;
+                    newSecurities += amount;
+                    break;
+                case 'Securities >> Checking':
+                    newSecurities -= amount;
+                    newChecking += amount;
+                    break;
+                case 'Securities >> Saving':
+                    newSecurities -= amount;
+                    newSaving += amount;
+                    break;
+            }
+
+            // 新しい残高を計算
+            const newCurAsset = newChecking + newSaving + newSecurities;
+
+            // 新しい行を作成
+            const table = document.getElementById('transaction-table').getElementsByTagName('tbody')[0];
+            const newRow = table.insertRow();
+
+            // 新しい行を日付順に挿入
+            const rows = Array.from(table.rows);
+            let insertAt = rows.findIndex(row => {
+                const rowDate = parseInt(row.cells[0].textContent);
+                return rowDate > date;
+            });
+
+            if (insertAt === -1) {
+                insertAt = rows.length; // 最後に追加
+            }
+
+            // 挿入位置に新しい行を追加
+            table.insertBefore(newRow, table.rows[insertAt]);
+
+            // 新しい行にデータを挿入
+            newRow.innerHTML = `
+                <td>${date}</td>
+                <td>${item}</td>
+                <td>${type}</td>
+                <td>${amount}</td>
+                <td>${newChecking}</td>
+                <td>${newSaving}</td>
+                <td>${newSecurities}</td>
+                <td>${newCurAsset}</td>
+            `;
+
+            // 残高を再計算
+            recalculateBalances();
+        });
+
+        // 残高の再計算
+        function recalculateBalances() {
+            let checkingTotal = checkingBalance;
+            let savingTotal = savingBalance;
+            let securitiesTotal = securitiesBalance;
+
+            const rows = document.querySelectorAll("#transaction-table tbody tr:not(#initial-row)");
+            rows.forEach(row => {
+                const amount = parseFloat(row.cells[3].textContent);
+                const type = row.cells[2].textContent;
+
+                switch (type) {
+                    case 'Checking':
+                        checkingTotal += amount;
+                        break;
+                    case 'Saving':
+                        savingTotal += amount;
+                        break;
+                    case 'Securities':
+                        securitiesTotal += amount;
+                        break;
+                    case 'Checking >> Saving':
+                        checkingTotal -= amount;
+                        savingTotal += amount;
+                        break;
+                    case 'Checking >> Securities':
+                        checkingTotal -= amount;
+                        securitiesTotal += amount;
+                        break;
+                    case 'Saving >> Checking':
+                        savingTotal -= amount;
+                        checkingTotal += amount;
+                        break;
+                    case 'Saving >> Securities':
+                        savingTotal -= amount;
+                        securitiesTotal += amount;
+                        break;
+                    case 'Securities >> Checking':
+                        securitiesTotal -= amount;
+                        checkingTotal += amount;
+                        break;
+                    case 'Securities >> Saving':
+                        securitiesTotal -= amount;
+                        savingTotal += amount;
+                        break;
+                }
+
+                // Cur. Asset再計算
+                const curAssetTotal = checkingTotal + savingTotal + securitiesTotal;
+                document.getElementById("cur-asset").textContent = curAssetTotal;
+                document.getElementById("initial-checking").textContent = checkingTotal;
+                document.getElementById("initial-saving").textContent = savingTotal;
+                document.getElementById("initial-securities").textContent = securitiesTotal;
+            });
+        }
+
+        // セルを編集可能にする
+        function makeCellsEditable() {
+            const editableCells = document.querySelectorAll('.editable');
+            editableCells.forEach(cell => {
+                cell.addEventListener('click', function() {
+                    this.contentEditable = true;
+                });
+                cell.addEventListener('blur', function() {
+                    this.contentEditable = false;
+                    recalculateBalances();
+                });
+            });
+        }
