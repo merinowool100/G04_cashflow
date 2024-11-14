@@ -38,11 +38,48 @@
         .month-display {
             font-size: 18px;
         }
+        .readonly {
+            background-color: #f4f4f4;
+            border: none;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 300px;
+        }
     </style>
 </head>
 <body>
 
 <h1>日付順金額管理</h1>
+
+<!-- 初期設定ボタン -->
+<div class="controls">
+    <button id="initialSetupBtn">初期設定</button>
+</div>
+
+<!-- 初期設定ウィンドウ -->
+<div id="initialSetupModal" class="modal">
+    <div class="modal-content">
+        <h2>初期設定</h2>
+        <label for="initialBalance">初期残高: </label>
+        <input type="number" id="initialBalance" name="initialBalance" required>
+        <button id="saveInitialBalance">保存</button>
+        <button id="cancelInitialSetup">キャンセル</button>
+    </div>
+</div>
 
 <!-- 年月選択と矢印ボタン -->
 <div class="controls arrows">
@@ -79,11 +116,50 @@
 </table>
 
 <script>
-    // ローカルストレージからデータを取得、初期化
     let tableData = JSON.parse(localStorage.getItem('tableData')) || [];
+    let initialBalance = JSON.parse(localStorage.getItem('initialBalance')) || 0;
+
     let currentDate = "2024-11";  // 表示する開始年月
     let startDate = "2024-11";    // 開始年月
     let endDate = "2034-10";      // 終了年月（10年間）
+
+    // 初期設定ウィンドウの表示
+    const initialSetupModal = document.getElementById('initialSetupModal');
+    const initialSetupBtn = document.getElementById('initialSetupBtn');
+    const saveInitialBalanceBtn = document.getElementById('saveInitialBalance');
+    const cancelInitialSetupBtn = document.getElementById('cancelInitialSetup');
+    const initialBalanceInput = document.getElementById('initialBalance');
+
+    // 初期残高を変更する処理
+    initialSetupBtn.addEventListener('click', function() {
+        initialSetupModal.style.display = 'flex';
+        initialBalanceInput.value = initialBalance;  // 現在の初期残高を表示
+    });
+
+    saveInitialBalanceBtn.addEventListener('click', function() {
+        const balance = parseInt(initialBalanceInput.value);
+        if (!isNaN(balance)) {
+            initialBalance = balance;
+            localStorage.setItem('initialBalance', JSON.stringify(initialBalance));
+
+            // 初期残高を繰越行としてテーブルに追加
+            tableData = [];
+            tableData.push({
+                date: "2024-11-01", order: 0, item: "繰越", amount: 0, balance: initialBalance
+            });
+
+            // 各月1日の繰越データを作成
+            createMonthlyCarryovers();
+
+            localStorage.setItem('tableData', JSON.stringify(tableData));
+            initialSetupModal.style.display = 'none';
+            renderTable();
+        }
+    });
+
+    cancelInitialSetupBtn.addEventListener('click', function() {
+        initialSetupModal.style.display = 'none';
+    });
 
     // 月の選択
     function setDateRange() {
@@ -154,34 +230,65 @@
         }
     }
 
-    // 残高を計算
-    function updateBalances() {
-        let lastBalance = 0;
+    // 入力フォームの送信イベントを監視
+    document.getElementById('inputForm').addEventListener('submit', function(event) {
+        event.preventDefault();
 
-        // まず前月の最終行を検索して繰越残高を設定
-        const previousMonthData = tableData.filter(row => row.date.startsWith(getPreviousMonthDate(currentDate)));
-        
-        // 前月の最終行の残高を取得
-        if (previousMonthData.length > 0) {
-            const lastRowOfPreviousMonth = previousMonthData[previousMonthData.length - 1];
-            lastBalance = lastRowOfPreviousMonth.balance;
-        } else {
-            lastBalance = 0;  // 前月データがない場合は0（または初期値）
+        const day = parseInt(document.getElementById('day').value);
+        const item = document.getElementById('item').value;
+        const amount = parseInt(document.getElementById('amount').value);
+
+        const order = getOrderForSameDay(currentDate, day);
+
+        const newRow = { 
+            date: `${currentDate}-${String(day).padStart(2, '0')}`,
+            order, 
+            item, 
+            amount, 
+            balance: 0 
+        };
+
+        const lastBalance = getLastBalanceFromPreviousMonth(currentDate);
+        newRow.balance = lastBalance + newRow.amount;
+
+        tableData.push(newRow);
+
+        tableData.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
+
+        // 残高計算
+        for (let i = 1; i < tableData.length; i++) {
+            tableData[i].balance = tableData[i - 1].balance + tableData[i].amount;
         }
 
-        // 当月の1日目に前月の最終残高を設定
-        tableData.forEach((row, index) => {
-            if (row.date.startsWith(currentDate)) {
-                if (index === 0) {
-                    row.balance = lastBalance;  // 1日に前月から繰越残高
-                } else {
-                    row.balance = tableData[index - 1].balance + row.amount;  // 残高を更新
-                }
-            }
-        });
+        localStorage.setItem('tableData', JSON.stringify(tableData));
+
+        renderTable();
+
+        document.getElementById('day').value = '';
+        document.getElementById('item').value = '';
+        document.getElementById('amount').value = '';
+    });
+
+    // 同じ日付のデータの中で、orderの番号を決定
+    function getOrderForSameDay(date, day) {
+        const sameDayData = tableData.filter(row => row.date === `${date}-${String(day).padStart(2, '0')}`);
+        return sameDayData.length;
     }
 
-    // 前月の日付を取得
+    // 前月の残高を取得
+    function getLastBalanceFromPreviousMonth(date) {
+        const previousMonthDate = getPreviousMonthDate(date);
+        const previousMonthData = tableData.filter(row => row.date.startsWith(previousMonthDate));
+
+        if (previousMonthData.length > 0) {
+            const lastRecord = previousMonthData.reduce((prev, current) => prev.date > current.date ? prev : current);
+            return lastRecord.balance;
+        }
+
+        return initialBalance; // 初期残高を使用
+    }
+
+    // 前月の年月を取得
     function getPreviousMonthDate(date) {
         const [year, month] = date.split('-').map(Number);
         let newMonth = month - 1;
@@ -193,60 +300,47 @@
         return `${newYear}-${String(newMonth).padStart(2, '0')}`;
     }
 
-    // 入力フォームの送信イベントを監視
-    document.getElementById('inputForm').addEventListener('submit', function(event) {
-        event.preventDefault();
+    // 各月の1日の繰越データを作成
+    function createMonthlyCarryovers() {
+        let currentBalance = initialBalance;
 
-        const day = parseInt(document.getElementById('day').value);
-        const item = document.getElementById('item').value;
-        const amount = parseInt(document.getElementById('amount').value);
+        for (let year = 2024; year <= 2034; year++) {
+            for (let month = 1; month <= 12; month++) {
+                const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+                const carryoverDate = `${monthStr}-01`;
 
-        // 新しいデータを追加
-        const newRow = { 
-            date: `${currentDate}-${String(day).padStart(2, '0')}`,
-            item, 
-            amount, 
-            balance: 0 // 最初は0としておく
-        };
+                if (!tableData.some(row => row.date === carryoverDate)) {
+                    tableData.push({
+                        date: carryoverDate,
+                        order: 0,
+                        item: "繰越",
+                        amount: 0,
+                        balance: currentBalance
+                    });
+                }
+                // 次月の繰越残高を更新
+                currentBalance = currentBalance;
+            }
+        }
 
-        // 追加したデータをtableDataに入れる
-        tableData.push(newRow);
-        tableData.sort((a, b) => a.date.localeCompare(b.date));
-
-        // 残高を更新
-        updateBalances();
-
-        // データをローカルストレージに保存
         localStorage.setItem('tableData', JSON.stringify(tableData));
-
-        // テーブルを再描画
-        renderTable();
-
-        // 入力フォームをリセット
-        document.getElementById('day').value = '';
-        document.getElementById('item').value = '';
-        document.getElementById('amount').value = '';
-    });
+    }
 
     // 表示されるテーブルを描画
     function renderTable() {
         const tbody = document.querySelector('#balanceTable tbody');
         tbody.innerHTML = '';
 
-        // 現在の月のデータのみフィルター
         const filteredData = tableData.filter(row => row.date.startsWith(currentDate));
 
-        // 残高の計算
-        updateBalances();
-
-        // テーブルにデータを追加
         filteredData.forEach(row => {
             const tr = document.createElement('tr');
+            const balanceEditable = row.date === `${currentDate}-01` ? 'contenteditable="true"' : '';
             tr.innerHTML = `
                 <td>${row.date.split('-')[2]}</td>
                 <td>${row.item}</td>
                 <td>${row.amount}</td>
-                <td>${row.balance}</td>
+                <td ${balanceEditable}>${row.balance}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -257,7 +351,6 @@
 
     document.getElementById('prevMonth').addEventListener('click', prevMonth);
     document.getElementById('nextMonth').addEventListener('click', nextMonth);
-
 </script>
 
 </body>
