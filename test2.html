@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form id="inputForm">
+        <label for="date">日付</label><input id="date" type="date" required>
+        <label for="item">項目</label><input id="item" type="text" required>
+        <label for="amount">金額</label><input id="amount" type="number" required>
+        <button type="submit">追加</button>
+    </form>
+
+<script>
+    startDate = "2024-11-1";
+    initialBlanace = 0;
+    const records =[{date: startDate, item: "初期残高", amount: 0}];
+    console.log(records);
+
+    document.getElementById("inputForm").addEventListener("submit",(event)=>{
+        event.preventDefault();
+        
+        const date = document.getElementById("date").value;
+        const item = document.getElementById("item").value;
+        const amount = parseFloat(document.getElementById("amount").value);
+        
+        records.push({date, item, amount});
+
+        records.sort((a,b)=>{
+            return new Date(a.date) - new Date(b.date);
+        });
+
+        localStorage.setItem("records", JSON.stringify(records));
+        console.log(records);
+        document.getElementById("inputForm").reset();
+    });
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
