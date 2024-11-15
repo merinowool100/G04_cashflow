@@ -6,73 +6,145 @@
     <title>Document</title>
 </head>
 <body>
-    <form id="inputForm">
-        <label for="date">日付</label><input id="date" type="date" required>
-        <label for="item">項目</label><input id="item" type="text" required>
-        <label for="amount">金額</label><input id="amount" type="number" required>
-        <button type="submit">追加</button>
-    </form>
+<!-- 初期設定ボタン -->
+<div class="controls">
+    <button id="initialSetupBtn">設定</button>
+</div>
 
-    <div id="showRecords"></div>
+<!-- 初期設定ウィンドウ -->
+<div id="setup" style="display:none;">
+    <h2>設定</h2>
+    <label for="startDate">開始日: </label>
+    <input type="date" id="initialDate" required>
+    <label for="initialBalance">初期残高: </label>
+    <input type="number" id="initialBalance" required>
+    <button id="saveSetup">保存</button>
+    <button id="clearLocalStorageBtn">全データクリア</button> 
+</div>
+
+<form id="inputForm">
+    <label for="date">日付</label><input id="date" type="date" required>
+    <label for="item">項目</label><input id="item" type="text" required>
+    <label for="amount">金額</label><input id="amount" type="number" required>
+    <button type="submit">追加</button>
+</form>
+
+<div id="recordsTable"></div>
+
+<table>
+    <thead>
+        <tr>
+            <th>日付</th>
+            <th>項目</th>
+            <th>金額</th>
+            <th>残高</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
 
 <script>
-    startDate = "2024-11-1";
-    initialBlanace = 0;
-    const records =[{date: startDate, item: "初期残高", amount: 0}];
-    console.log(records);
+    let records = [];
 
+    // localStorage からレコードを読み込む
     const savedRecords = localStorage.getItem("records");
-    if (savedRecords){
+    if (savedRecords) {
         records = JSON.parse(savedRecords);
     }
 
-    function displayRecords(){
-        const showRecordsDiv = document.getElementById("showRecords");
-        showRecordsDiv.innerHTML = "";
-
-        records.forEach(record =>{
-            const recordDiv = document.createElement("div");
-            recordDiv.innerHTML = `${record.date} - ${record.item} - ${record.amount}`;
-            showRecordsDiv.appendChild(recordDiv);
-        });
-
-        for (i=0; i < records.length; i++){
-            if(i === 0){
-                
-            }
-        }
-
-    }
-
+    // 表示を更新
     displayRecords();
 
+    // 記録を表示する関数
+    function displayRecords() {
+        const recordsTableBody = document.querySelector("table tbody");
+        recordsTableBody.innerHTML = "";
 
+        let balance = 0;
 
-    document.getElementById("inputForm").addEventListener("submit",(event)=>{
+        for (let i = 0; i < records.length; i++) {
+            const row = document.createElement("tr");
+
+            const tdDate = document.createElement("td");
+            const tdItem = document.createElement("td");
+            const tdAmount = document.createElement("td");
+            const tdBalance = document.createElement("td");
+
+            tdDate.textContent = records[i].date;
+            tdItem.textContent = records[i].item;
+            tdAmount.textContent = records[i].amount;
+
+            balance += records[i].amount;
+            tdBalance.textContent = balance;
+
+            row.appendChild(tdDate);
+            row.appendChild(tdItem);
+            row.appendChild(tdAmount);
+            row.appendChild(tdBalance);
+
+            recordsTableBody.appendChild(row);
+        }
+    }
+
+    // 記録をフォームに追加する処理
+    document.getElementById("inputForm").addEventListener("submit", (event) => {
         event.preventDefault();
-        
+
         const date = document.getElementById("date").value;
         const item = document.getElementById("item").value;
         const amount = parseFloat(document.getElementById("amount").value);
-        
-        records.push({date, item, amount});
+        const flag = "none";
 
-        records.sort((a,b)=>{
-            return new Date(a.date) - new Date(b.date);
-        });
+        records.push({ date, item, amount, flag });
 
+        // 日付順に並べ替え
+        records.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // localStorage に保存
         localStorage.setItem("records", JSON.stringify(records));
 
-        console.log(records);
-        
+        // フォームをリセット
         document.getElementById("inputForm").reset();
 
+        // 表示を更新
         displayRecords();
     });
 
+    // 初期化ボタン（localStorage を消去する）
+    document.getElementById("clearLocalStorageBtn").addEventListener("click", () => {
+        localStorage.clear();
+        location.reload(); // ページをリロードして変更を反映
+    });
 
+    // 初期設定ウィンドウの表示/非表示を切り替える
+    document.getElementById("initialSetupBtn").addEventListener("click", function() {
+        const setupWindow = document.getElementById("setup");
+        if (setupWindow.style.display === "none" || setupWindow.style.display === "") {
+            setupWindow.style.display = "block";  // 表示
+        } else {
+            setupWindow.style.display = "none";   // 非表示
+        }
+    });
+
+    // 設定保存ボタン
+    document.getElementById("saveSetup").addEventListener("click", () => {
+        let startDate = document.getElementById("initialDate").value;
+        let initialBalance = parseFloat(document.getElementById("initialBalance").value);
+
+        // "init" フラグがついているレコードを削除して新しいレコードを追加
+        records = records.filter(record => record.flag !== "init");
+        records.push({ date: startDate, item: "初期残高", amount: initialBalance, flag: "init" });
+
+        // localStorage に保存
+        localStorage.setItem("records", JSON.stringify(records));
+
+        // 設定ウィンドウを非表示にする
+        document.getElementById("setup").style.display = "none";
+
+        // 表示を更新
+        displayRecords();
+    });
 </script>
-
 
 </body>
 </html>
