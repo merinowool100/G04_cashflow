@@ -13,8 +13,10 @@
 
 <!-- 初期設定ウィンドウ -->
 <div id="setup" style="display:none;">
-    <label for="startDate">開始日: </label>
+    <label for="initialDate">開始日: </label>
     <input type="date" id="initialDate" required>
+    <label for="endDate">終了日: </label>
+    <input type="date" id="endDate" required>
     <label for="initialBalance">初期残高: </label>
     <input type="number" id="initialBalance" required>
     <button id="saveSetup">保存</button>
@@ -25,6 +27,8 @@
     <label for="date">日付</label><input id="date" type="date" required>
     <label for="item">項目</label><input id="item" type="text" required>
     <label for="amount">金額</label><input id="amount" type="number" required>
+    <label><input type="checkbox" id="monthly">毎月</label>
+    <label><input type="checkbox" id="yearly">毎年</label>
     <button type="submit">追加</button>
 </form>
 
@@ -45,10 +49,24 @@
 <script>
     let records = [];
 
+    let initialDate, endDate, initialBalance;
+
     // localStorage からレコードを読み込む
     const savedRecords = localStorage.getItem("records");
     if (savedRecords) {
         records = JSON.parse(savedRecords);
+    }
+
+    const savedSetup = localStorage.getItem("setup");
+    if(savedSetup){
+        const setupData = JSON.parse(savedSetup);
+        initialDate = setupData.initialDate;
+        endDate = setupData.endDate;
+        initialBalance = setupData.initialBalance;
+
+        document.getElementById("initialDate").value = initialDate;
+        document.getElementById("endDate").value = endDate;
+        document.getElementById("initialBalance").value = initialBalance;
     }
 
     // 表示を更新
@@ -85,6 +103,21 @@
         }
     }
 
+    // チェックボックスをどちらか一方だけ選択できるようにする
+    document.getElementById("monthly").addEventListener("change", function() {
+        if (this.checked) {
+            document.getElementById("yearly").checked = false;  // 毎月が選ばれたら毎年を解除
+        }
+    });
+
+    document.getElementById("yearly").addEventListener("change", function() {
+        if (this.checked) {
+            document.getElementById("monthly").checked = false;  // 毎年が選ばれたら毎月を解除
+        }
+        });
+
+
+
     // 記録をフォームに追加する処理
     document.getElementById("inputForm").addEventListener("submit", (event) => {
         event.preventDefault();
@@ -94,7 +127,23 @@
         const amount = parseFloat(document.getElementById("amount").value);
         const flag = "none";
 
-        records.push({ date, item, amount, flag });
+        let startDate = new Date(date);
+        let endDate = document.getElementById("endDate").value ? new Date(document.getElementById("endDate").value):"2030-12-31";
+
+        if (document.getElementById("monthly").checked){
+            while (startDate <= endDate){
+                records.push({date: startDate.toISOString().split("T")[0],item, amount,flag});
+                startDate.setMonth(startDate.getMonth() +1);
+            }
+        }
+        else if (document.getElementById("yearly").checked){
+            while (startDate <= endDate){
+                records.push({date: startDate.toISOString().split("T")[0],item, amount,flag});
+                startDate.setFullYear(startDate.getFullYear() +1);
+            }
+        } else{
+            records.push({ date, item, amount, flag });
+        }
 
         // 日付順に並べ替え
         records.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -127,13 +176,21 @@
 
     // 設定保存ボタン
     document.getElementById("saveSetup").addEventListener("click", () => {
-        let startDate = document.getElementById("initialDate").value;
-        let initialBalance = parseFloat(document.getElementById("initialBalance").value);
+        initialDate = document.getElementById("initialDate").value;
+        initialBalance = parseFloat(document.getElementById("initialBalance").value);
+        endDate =  document.getElementById("endDate").value;
 
         // "init" フラグがついているレコードを削除して新しいレコードを追加
         records = records.filter(record => record.flag !== "init");
-        records.push({ date: startDate, item: "初期残高", amount: initialBalance, flag: "init" });
+        records.push({ date: initialDate, item: "初期残高", amount: initialBalance, flag: "init" });
         records.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        localStorage.setItem("setup",JSON.stringify({
+            initialDate,
+            endDate,
+            initialBalance,
+        }));
+
 
         // localStorage に保存
         localStorage.setItem("records", JSON.stringify(records));
