@@ -13,11 +13,40 @@
         <button type="submit">追加</button>
     </form>
 
+    <div id="showRecords"></div>
+
 <script>
     startDate = "2024-11-1";
     initialBlanace = 0;
     const records =[{date: startDate, item: "初期残高", amount: 0}];
     console.log(records);
+
+    const savedRecords = localStorage.getItem("records");
+    if (savedRecords){
+        records = JSON.parse(savedRecords);
+    }
+
+    function displayRecords(){
+        const showRecordsDiv = document.getElementById("showRecords");
+        showRecordsDiv.innerHTML = "";
+
+        records.forEach(record =>{
+            const recordDiv = document.createElement("div");
+            recordDiv.innerHTML = `${record.date} - ${record.item} - ${record.amount}`;
+            showRecordsDiv.appendChild(recordDiv);
+        });
+
+        for (i=0; i < records.length; i++){
+            if(i === 0){
+                
+            }
+        }
+
+    }
+
+    displayRecords();
+
+
 
     document.getElementById("inputForm").addEventListener("submit",(event)=>{
         event.preventDefault();
@@ -33,12 +62,13 @@
         });
 
         localStorage.setItem("records", JSON.stringify(records));
+
         console.log(records);
+        
         document.getElementById("inputForm").reset();
+
+        displayRecords();
     });
-
-
-
 
 
 </script>
