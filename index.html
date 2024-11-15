@@ -13,7 +13,6 @@
 
 <!-- 初期設定ウィンドウ -->
 <div id="setup" style="display:none;">
-    <h2>設定</h2>
     <label for="startDate">開始日: </label>
     <input type="date" id="initialDate" required>
     <label for="initialBalance">初期残高: </label>
@@ -134,6 +133,7 @@
         // "init" フラグがついているレコードを削除して新しいレコードを追加
         records = records.filter(record => record.flag !== "init");
         records.push({ date: startDate, item: "初期残高", amount: initialBalance, flag: "init" });
+        records.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         // localStorage に保存
         localStorage.setItem("records", JSON.stringify(records));
